@@ -1,0 +1,2075 @@
+<title>Attendance Manager</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* ─── Design Tokens ─────────────────────────────────────────────────────── */
+:root {
+  --bg:        #0f1117;
+  --bg-2:      #161b27;
+  --bg-3:      #1e2535;
+  --bg-4:      #252d40;
+  --border:    #2e3a52;
+  --border-2:  #3d4f6e;
+  --fg:        #e2e8f0;
+  --fg-2:      #94a3b8;
+  --fg-3:      #64748b;
+  --accent:    #38bdf8;
+  --accent-2:  #0ea5e9;
+  --accent-bg: rgba(56,189,248,.12);
+  --green:     #34d399;
+  --green-bg:  rgba(52,211,153,.1);
+  --red:       #f87171;
+  --red-bg:    rgba(248,113,113,.1);
+  --amber:     #fbbf24;
+  --amber-bg:  rgba(251,191,36,.1);
+  --purple:    #a78bfa;
+  --purple-bg: rgba(167,139,250,.1);
+  --font-ui:   'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --nav-h:     58px;
+  --r:         8px;
+  --r-lg:      12px;
+  --shadow:    0 4px 20px rgba(0,0,0,.4);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg:        #f0f4f8;
+    --bg-2:      #ffffff;
+    --bg-3:      #e8edf5;
+    --bg-4:      #dce4f0;
+    --border:    #c9d5e8;
+    --border-2:  #b0c0d8;
+    --fg:        #1a2642;
+    --fg-2:      #4a5a7a;
+    --fg-3:      #7a8aaa;
+    --accent:    #0284c7;
+    --accent-2:  #0369a1;
+    --accent-bg: rgba(2,132,199,.1);
+    --green:     #059669;
+    --green-bg:  rgba(5,150,105,.08);
+    --red:       #dc2626;
+    --red-bg:    rgba(220,38,38,.08);
+    --amber:     #d97706;
+    --amber-bg:  rgba(217,119,6,.08);
+    --purple:    #7c3aed;
+    --purple-bg: rgba(124,58,237,.08);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg:        #f0f4f8;
+  --bg-2:      #ffffff;
+  --bg-3:      #e8edf5;
+  --bg-4:      #dce4f0;
+  --border:    #c9d5e8;
+  --border-2:  #b0c0d8;
+  --fg:        #1a2642;
+  --fg-2:      #4a5a7a;
+  --fg-3:      #7a8aaa;
+  --accent:    #0284c7;
+  --accent-2:  #0369a1;
+  --accent-bg: rgba(2,132,199,.1);
+  --green:     #059669;
+  --green-bg:  rgba(5,150,105,.08);
+  --red:       #dc2626;
+  --red-bg:    rgba(220,38,38,.08);
+  --amber:     #d97706;
+  --amber-bg:  rgba(217,119,6,.08);
+  --purple:    #7c3aed;
+  --purple-bg: rgba(124,58,237,.08);
+  color-scheme: light;
+}
+
+/* ─── Reset & Base ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100%;
+  padding-left: max(0px, env(safe-area-inset-left, 0px));
+  padding-right: max(0px, env(safe-area-inset-right, 0px));
+}
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+
+/* ─── Navigation ───────────────────────────────────────────────────────── */
+.nav {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 100;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: var(--nav-h);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav::-webkit-scrollbar { display: none; }
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--fg);
+  white-space: nowrap;
+  margin-right: 20px;
+  flex-shrink: 0;
+}
+.nav-logo svg { color: var(--accent); }
+.nav-tabs { display: flex; gap: 2px; }
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border: none;
+  background: transparent;
+  color: var(--fg-2);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--r);
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.nav-tab:hover { background: var(--bg-3); color: var(--fg); }
+.nav-tab.active { background: var(--accent-bg); color: var(--accent); }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.theme-toggle {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-3);
+  color: var(--fg-2);
+  display: flex; align-items: center; justify-content: center;
+}
+.theme-toggle:hover { color: var(--fg); }
+
+/* ─── Safe-area header fill ─────────────────────────────────────────────── */
+body::before {
+  content: ""; position: fixed;
+  inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+  background: var(--bg-2); z-index: 101;
+}
+
+/* ─── Main Content ─────────────────────────────────────────────────────── */
+.main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.section { display: none; }
+.section.active { display: block; }
+
+/* ─── Page Header ──────────────────────────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.page-title { font-size: 22px; font-weight: 700; line-height: 1.2; }
+.page-subtitle { color: var(--fg-2); font-size: 13px; margin-top: 3px; }
+.cycle-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-bg); color: var(--accent);
+  border: 1px solid rgba(56,189,248,.3);
+  border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600;
+}
+
+/* ─── Stat Cards ───────────────────────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stat-card .label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--fg-3);
+}
+.stat-card .value {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--fg);
+}
+.stat-card .sub { font-size: 12px; color: var(--fg-2); }
+.stat-card.green .value { color: var(--green); }
+.stat-card.red .value { color: var(--red); }
+.stat-card.amber .value { color: var(--amber); }
+.stat-card.purple .value { color: var(--purple); }
+.stat-card.accent .value { color: var(--accent); }
+
+/* ─── Quick Actions ─────────────────────────────────────────────────────── */
+.quick-actions {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 16px;
+  border-radius: var(--r);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  transition: opacity .15s, transform .1s;
+}
+.btn:hover { opacity: .85; }
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--accent); color: #0a1628; }
+.btn-secondary {
+  background: var(--bg-3);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+.btn-danger { background: var(--red); color: #fff; }
+.btn-ghost {
+  background: transparent; color: var(--fg-2);
+  border: 1px solid var(--border);
+}
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+.btn-xs { padding: 3px 8px; font-size: 11px; }
+
+/* ─── Card ───────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+}
+.card + .card { margin-top: 16px; }
+.card-title {
+  font-size: 14px; font-weight: 600; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+  color: var(--fg);
+}
+
+/* ─── Upload Zone ─────────────────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--border-2);
+  border-radius: var(--r-lg);
+  padding: 48px 24px;
+  text-align: center;
+  transition: border-color .2s, background .2s;
+  cursor: pointer;
+  background: var(--bg-2);
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.upload-icon { font-size: 40px; margin-bottom: 12px; }
+.upload-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.upload-sub { color: var(--fg-2); font-size: 13px; }
+.upload-sub span { color: var(--accent); font-weight: 600; }
+#file-input { display: none; }
+
+/* ─── Table ───────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; border-radius: var(--r-lg); border: 1px solid var(--border); }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px; font-variant-numeric: tabular-nums;
+}
+th {
+  background: var(--bg-3);
+  color: var(--fg-2);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 2;
+}
+td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+td.text { font-family: var(--font-ui); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg-3); }
+.tfoot td {
+  background: var(--bg-3);
+  font-weight: 700;
+  border-top: 2px solid var(--border-2);
+  border-bottom: none;
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+/* ─── Status Badges ─────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  font-family: var(--font-ui);
+}
+.badge-p   { background: var(--green-bg);  color: var(--green); }
+.badge-a   { background: var(--red-bg);    color: var(--red); }
+.badge-wo  { background: var(--bg-4);      color: var(--fg-3); }
+.badge-h   { background: var(--purple-bg); color: var(--purple); }
+.badge-hl  { background: var(--amber-bg);  color: var(--amber); }
+.badge-hd  { background: var(--amber-bg);  color: var(--amber); }
+.badge-late{ background: var(--amber-bg);  color: var(--amber); }
+
+/* ─── Form Controls ─────────────────────────────────────────────────────── */
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label {
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .07em;
+  color: var(--fg-2);
+}
+.form-control {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--fg);
+  padding: 8px 11px;
+  font-size: 13px;
+  min-width: 160px;
+  transition: border-color .15s;
+  outline: none;
+}
+.form-control:focus { border-color: var(--accent); }
+select.form-control { cursor: pointer; }
+
+/* ─── Alert / Info banners ─────────────────────────────────────────────── */
+.alert {
+  padding: 10px 14px; border-radius: var(--r);
+  font-size: 13px; display: flex; align-items: flex-start; gap: 8px;
+  margin-bottom: 14px;
+}
+.alert-error  { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(248,113,113,.3); }
+.alert-info   { background: var(--accent-bg); color: var(--accent);border: 1px solid rgba(56,189,248,.3); }
+.alert-success{ background: var(--green-bg);  color: var(--green); border: 1px solid rgba(52,211,153,.3); }
+.alert-warn   { background: var(--amber-bg);  color: var(--amber); border: 1px solid rgba(251,191,36,.3); }
+.alert [hidden] { display: none !important; }
+
+/* ─── Checkbox row ─────────────────────────────────────────────────────── */
+.checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.checkbox-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--r); cursor: pointer;
+}
+.checkbox-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.checkbox-item span { font-size: 13px; font-weight: 500; }
+
+/* ─── Rules Grid ─────────────────────────────────────────────────────── */
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.rule-card {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 16px;
+  border-left: 3px solid var(--accent);
+}
+.rule-card.red   { border-left-color: var(--red); }
+.rule-card.amber { border-left-color: var(--amber); }
+.rule-card.green { border-left-color: var(--green); }
+.rule-card.purple{ border-left-color: var(--purple); }
+.rule-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.rule-time { font-family: var(--font-mono); color: var(--accent); font-size: 13px; margin-bottom: 6px; }
+.rule-card.red .rule-time   { color: var(--red); }
+.rule-card.amber .rule-time { color: var(--amber); }
+.rule-card.purple .rule-time{ color: var(--purple); }
+.rule-desc { font-size: 12px; color: var(--fg-2); line-height: 1.5; }
+.rule-deduction {
+  display: inline-block; margin-top: 8px;
+  background: var(--red-bg); color: var(--red);
+  border-radius: 4px; padding: 2px 8px;
+  font-size: 11px; font-weight: 700;
+}
+
+/* ─── Holiday List ─────────────────────────────────────────────────────── */
+.holiday-list { display: flex; flex-direction: column; gap: 8px; }
+.holiday-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+.holiday-info { display: flex; align-items: center; gap: 12px; }
+.holiday-date { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 600; }
+.holiday-name { font-size: 13px; font-weight: 500; }
+
+/* ─── Deduction Summary Card ─────────────────────────────────────────── */
+.deduction-card {
+  background: linear-gradient(135deg, #4a0a0a 0%, #7f1d1d 50%, #991b1b 100%);
+  border: 1px solid rgba(248,113,113,.4);
+  border-radius: var(--r-lg);
+  padding: 28px 24px;
+  margin-top: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.deduction-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% 50%, rgba(248,113,113,.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.deduction-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: rgba(248,113,113,.8); margin-bottom: 8px; }
+.deduction-value { font-size: 48px; font-weight: 800; color: var(--red); line-height: 1; font-variant-numeric: tabular-nums; }
+.deduction-days { font-size: 20px; color: rgba(248,113,113,.7); }
+.deduction-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+.deduction-item {
+  background: rgba(0,0,0,.3);
+  border-radius: var(--r);
+  padding: 10px 12px;
+}
+.deduction-item .d-label { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.5); margin-bottom: 4px; }
+.deduction-item .d-val { font-size: 18px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+
+/* ─── Process Results ─────────────────────────────────────────────────── */
+.result-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px;
+  margin-top: 20px;
+}
+.result-card {
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 16px;
+  text-align: center;
+}
+.result-card .num { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.result-card .lbl { font-size: 12px; color: var(--fg-2); margin-top: 4px; }
+
+/* ─── Modal ───────────────────────────────────────────────────────────── */
+.modal-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+  z-index: 200; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 24px;
+  width: 100%; max-width: 420px;
+  box-shadow: var(--shadow);
+}
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* ─── Divider ─────────────────────────────────────────────────────────── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+/* ─── Spinner ─────────────────────────────────────────────────────────── */
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Empty State ─────────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center; padding: 48px 24px;
+  color: var(--fg-3);
+}
+.empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+.empty-state .msg { font-size: 14px; }
+
+/* ─── Scrollable table container ─────────────────────────────────────── */
+.table-scroll { max-height: 500px; overflow-y: auto; }
+
+/* ─── Utility ─────────────────────────────────────────────────────────── */
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.text-red   { color: var(--red); }
+.text-green { color: var(--green); }
+.text-amber { color: var(--amber); }
+.text-muted { color: var(--fg-2); }
+.font-mono  { font-family: var(--font-mono); }
+.fw-700     { font-weight: 700; }
+.mt-4       { margin-top: 4px; }
+.mt-8       { margin-top: 8px; }
+.mt-16      { margin-top: 16px; }
+.mt-24      { margin-top: 24px; }
+.gap-row    { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.section-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--fg); }
+
+/* ─── Settings ─────────────────────────────────────────────────────────── */
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.settings-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; }
+.settings-card .s-title { font-size: 13px; font-weight: 700; margin-bottom: 14px; color: var(--fg-2); text-transform: uppercase; letter-spacing: .07em; }
+
+@media (max-width: 600px) {
+  .main { padding: 16px max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .deduction-value { font-size: 36px; }
+}
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     NAVIGATION
+════════════════════════════════════════════════════════════════════════ -->
+<nav class="nav" role="navigation">
+  <div class="nav-logo">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+    </svg>
+    eSSL Attendance
+  </div>
+  <div class="nav-tabs" role="tablist">
+    <button class="nav-tab active" data-tab="dashboard" role="tab" aria-selected="true">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-tab" data-tab="import" role="tab">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Import eSSL
+    </button>
+    <button class="nav-tab" data-tab="process" role="tab">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Process
+    </button>
+    <button class="nav-tab" data-tab="report" role="tab">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      User Report
+    </button>
+    <button class="nav-tab" data-tab="holidays" role="tab">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Holidays
+    </button>
+    <button class="nav-tab" data-tab="rules" role="tab">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Rules
+    </button>
+    <button class="nav-tab" data-tab="settings" role="tab">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+  <div class="nav-right">
+    <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="theme-icon-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════════════════════════════════ -->
+<main class="main">
+
+  <!-- ── TAB 1: DASHBOARD ─────────────────────────────────────────────── -->
+  <section id="tab-dashboard" class="section active">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Payroll Dashboard</div>
+        <div class="page-subtitle" id="dash-cycle-sub">Loading cycle…</div>
+      </div>
+      <div class="cycle-badge" id="dash-cycle-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="dash-cycle-text">—</span>
+      </div>
+    </div>
+
+    <div class="stat-grid" id="dash-stats">
+      <div class="stat-card green">
+        <div class="label">Total Present</div>
+        <div class="value" id="ds-present">—</div>
+        <div class="sub">employee-days</div>
+      </div>
+      <div class="stat-card red">
+        <div class="label">Total Absent</div>
+        <div class="value" id="ds-absent">—</div>
+        <div class="sub">employee-days</div>
+      </div>
+      <div class="stat-card amber">
+        <div class="label">Late Flags</div>
+        <div class="value" id="ds-late">—</div>
+        <div class="sub">occurrences</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="label">Early Going</div>
+        <div class="value" id="ds-early">—</div>
+        <div class="sub">occurrences</div>
+      </div>
+      <div class="stat-card accent">
+        <div class="label">Half Days</div>
+        <div class="value" id="ds-halfday">—</div>
+        <div class="sub">occurrences</div>
+      </div>
+      <div class="stat-card red">
+        <div class="label">Total Deductions</div>
+        <div class="value" id="ds-deductions">—</div>
+        <div class="sub">days deducted</div>
+      </div>
+    </div>
+
+    <div class="section-title">Quick Actions</div>
+    <div class="quick-actions">
+      <button class="btn btn-primary" onclick="switchTab('import')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import eSSL File
+      </button>
+      <button class="btn btn-secondary" onclick="switchTab('process')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Process Attendance
+      </button>
+      <button class="btn btn-secondary" onclick="switchTab('report')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        View Reports
+      </button>
+    </div>
+
+    <div id="dash-no-data" class="card">
+      <div class="empty-state">
+        <div class="icon">📊</div>
+        <div class="msg">No data imported yet. Import an eSSL Excel file to see dashboard stats.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB 2: IMPORT eSSL ─────────────────────────────────────────── -->
+  <section id="tab-import" class="section">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Import eSSL Report</div>
+        <div class="page-subtitle">Upload your monthly ESSL biometric Excel export</div>
+      </div>
+    </div>
+
+    <div id="upload-area" class="upload-zone" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">📁</div>
+      <div class="upload-title">Drop eSSL Excel file here</div>
+      <div class="upload-sub">or <span>click to browse</span> — supports .xlsx, .xls</div>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+
+    <div id="import-alert" class="alert alert-info mt-16" hidden>
+      <span>ℹ️</span><span id="import-alert-msg"></span>
+    </div>
+
+    <div id="import-preview" hidden>
+      <hr class="divider">
+      <div class="section-title">Import Preview — <span id="preview-count">0</span> Employees</div>
+      <div id="import-format-info" class="alert alert-info mt-16" style="margin-bottom:14px">
+        <span>ℹ️</span><span id="import-format-text"></span>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table id="preview-table">
+            <thead>
+              <tr>
+                <th>Emp ID</th><th>Name</th><th>Department</th>
+                <th class="text-right">Days</th>
+                <th class="text-right">Present</th>
+                <th class="text-right">Absent</th>
+                <th class="text-right">WO</th>
+                <th class="text-right">OT Hrs</th>
+              </tr>
+            </thead>
+            <tbody id="preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="gap-row mt-16">
+        <button class="btn btn-primary" id="confirm-import-btn" onclick="confirmImport()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Confirm Import
+        </button>
+        <button class="btn btn-ghost" onclick="cancelImport()">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB 3: PROCESS ────────────────────────────────────────────── -->
+  <section id="tab-process" class="section">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Process Attendance</div>
+        <div class="page-subtitle">Apply business rules and calculate deductions</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Processing Options</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Payroll Cycle</label>
+          <select class="form-control" id="proc-cycle" style="min-width:220px"></select>
+        </div>
+      </div>
+      <div class="section-title mt-8">Apply Rules</div>
+      <div class="checkbox-grid">
+        <label class="checkbox-item"><input type="checkbox" id="rule-late" checked><span>Late Arrival Rules</span></label>
+        <label class="checkbox-item"><input type="checkbox" id="rule-early" checked><span>Early Out Rules</span></label>
+        <label class="checkbox-item"><input type="checkbox" id="rule-holidays" checked><span>Holiday Override</span></label>
+        <label class="checkbox-item"><input type="checkbox" id="rule-weekends" checked><span>2nd/4th Saturday Off</span></label>
+        <label class="checkbox-item"><input type="checkbox" id="rule-duration" checked><span>Duration Deductions</span></label>
+        <label class="checkbox-item"><input type="checkbox" id="rule-free-late" checked><span>4 Free Late Per Cycle</span></label>
+      </div>
+      <button class="btn btn-primary" id="process-btn" onclick="processAttendance()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Start Processing
+      </button>
+    </div>
+
+    <div id="process-results" hidden>
+      <hr class="divider">
+      <div class="section-title">Processing Results</div>
+      <div class="result-grid">
+        <div class="result-card">
+          <div class="num" id="pr-records" style="color:var(--accent)">0</div>
+          <div class="lbl">Records Processed</div>
+        </div>
+        <div class="result-card">
+          <div class="num" id="pr-late" style="color:var(--amber)">0</div>
+          <div class="lbl">Late Flags</div>
+        </div>
+        <div class="result-card">
+          <div class="num" id="pr-deductions" style="color:var(--red)">0</div>
+          <div class="lbl">Deductions Applied</div>
+        </div>
+        <div class="result-card">
+          <div class="num" id="pr-ot" style="color:var(--green)">0</div>
+          <div class="lbl">OT Hours</div>
+        </div>
+      </div>
+      <div class="gap-row mt-16">
+        <button class="btn btn-secondary" onclick="switchTab('report')">View Detailed Reports →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB 4: USER REPORT ─────────────────────────────────────────── -->
+  <section id="tab-report" class="section">
+    <div class="page-header">
+      <div>
+        <div class="page-title">User-Wise Detailed Report</div>
+        <div class="page-subtitle">Day-by-day attendance analysis with deduction breakdown</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Employee</label>
+          <select class="form-control" id="report-emp" style="min-width:220px">
+            <option value="">— Select Employee —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>From Date</label>
+          <input type="date" class="form-control" id="report-from">
+        </div>
+        <div class="form-group">
+          <label>To Date</label>
+          <input type="date" class="form-control" id="report-to">
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <button class="btn btn-primary" onclick="generateReport()">Generate Report</button>
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="downloadCurrentReportPDF()">Download Employee PDF</button>
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="downloadAllReportsPDF()">Download All Users PDF</button>
+        </div>
+      </div>
+      <div id="report-date-error" class="alert alert-error" hidden>
+        <span>⚠️</span><span>Date range cannot exceed 31 days. Please narrow your selection.</span>
+      </div>
+    </div>
+
+    <div id="report-output" hidden>
+      <hr class="divider">
+      <div class="section-title" id="report-emp-title">Report for Employee</div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table id="report-table">
+            <thead>
+              <tr>
+                <th>Day</th>
+                <th>Date</th>
+                <th>In Time</th>
+                <th>Out Time</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Late (min)</th>
+                <th>Early Out</th>
+                <th>Short Leave</th>
+                <th>Half Day</th>
+                <th>OT</th>
+                <th>Deduction</th>
+                <th>Remark</th>
+              </tr>
+            </thead>
+            <tbody id="report-tbody"></tbody>
+            <tfoot id="report-tfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="deduction-card mt-24" id="deduction-summary-card">
+        <div class="deduction-label">Total Deduction for Period</div>
+        <div class="gap-row" style="align-items:flex-end; gap:12px; margin-bottom:4px">
+          <div class="deduction-value" id="ded-total-days">0.00</div>
+          <div class="deduction-days">days</div>
+        </div>
+        <div style="font-size:13px; color:rgba(248,113,113,.6); margin-bottom:4px" id="ded-total-time"></div>
+        <div class="deduction-grid" id="ded-breakdown"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB 5: HOLIDAYS ────────────────────────────────────────────── -->
+  <section id="tab-holidays" class="section">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Holidays</div>
+        <div class="page-subtitle">Manage public and company holidays</div>
+      </div>
+      <button class="btn btn-primary" onclick="openHolidayModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Holiday
+      </button>
+    </div>
+    <div class="holiday-list" id="holiday-list"></div>
+    <div id="holiday-empty" class="card" hidden>
+      <div class="empty-state"><div class="icon">🎉</div><div class="msg">No holidays added yet. Click "Add Holiday" to get started.</div></div>
+    </div>
+  </section>
+
+  <!-- ── TAB 6: RULES ───────────────────────────────────────────────── -->
+  <section id="tab-rules" class="section">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Attendance Rules</div>
+        <div class="page-subtitle">Active business rules for deduction calculation</div>
+      </div>
+    </div>
+    <div class="rules-grid">
+      <div class="rule-card green">
+        <div class="rule-name">✅ On Time</div>
+        <div class="rule-time">≤ 10:05 AM</div>
+        <div class="rule-desc">Employee is marked on time. No deduction.</div>
+        <span class="rule-deduction" style="background:var(--green-bg);color:var(--green)">Deduction: 0</span>
+      </div>
+      <div class="rule-card amber">
+        <div class="rule-name">🕐 Late Window</div>
+        <div class="rule-time">10:06 AM – 10:20 AM</div>
+        <div class="rule-desc">First 4 arrivals between 10:06 AM and 10:20 AM per payroll cycle are free. From the 5th occurrence onward, deduct 0.25 day per occurrence.</div>
+        <span class="rule-deduction">– 0.25 day (after 4 free)</span>
+      </div>
+      <div class="rule-card red">
+        <div class="rule-name">🔴 Hard Late</div>
+        <div class="rule-time">After 10:20 AM</div>
+        <div class="rule-desc">Arrivals after 10:20 AM and up to 12:00 PM incur a direct 0.25-day deduction, regardless of the four free late arrivals.</div>
+        <span class="rule-deduction">– 0.25 day (after 4 free)</span>
+      </div>
+      <div class="rule-card red">
+        <div class="rule-name">🏃 Early Out</div>
+        <div class="rule-time">Out before 6:30 PM</div>
+        <div class="rule-desc">Employee left before the official closing time. Immediate deduction regardless of total hours worked.</div>
+        <span class="rule-deduction">– 0.25 day (immediate)</span>
+      </div>
+      <div class="rule-card amber">
+        <div class="rule-name">⏱ Short Leave (Removed)</div>
+        <div class="rule-time">No separate short-leave window</div>
+        <div class="rule-desc">Short-leave deductions are disabled. Late arrivals are handled by the late-arrival rule.</div>
+        <span class="rule-deduction" style="background:var(--bg-4);color:var(--fg-3)">No separate deduction</span>
+      </div>
+      <div class="rule-card amber">
+        <div class="rule-name">🌓 Half Day</div>
+        <div class="rule-time">Arrival after 12:00 PM</div>
+        <div class="rule-desc">Arrival after 12:00 PM, including after 2:15 PM, results in a 0.5-day deduction.</div>
+        <span class="rule-deduction">– 0.50 day</span>
+      </div>
+      <div class="rule-card red">
+        <div class="rule-name">📅 Full Day</div>
+        <div class="rule-time">Missing &gt; 4 hrs or Absent</div>
+        <div class="rule-desc">Employee missed more than 4 hours of the shift, or was fully absent (no punch-in/out).</div>
+        <span class="rule-deduction">– 1.00 day</span>
+      </div>
+      <div class="rule-card" style="border-left-color:var(--fg-3)">
+        <div class="rule-name">📆 Weekly Off</div>
+        <div class="rule-time">All Sundays + 2nd &amp; 4th Saturday</div>
+        <div class="rule-desc">All Sundays and the 2nd &amp; 4th Saturdays of each month are designated Weekly Off. 1st, 3rd, 5th Saturdays are working.</div>
+        <span class="rule-deduction" style="background:var(--bg-4);color:var(--fg-3)">No Deduction</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAB 7: SETTINGS ────────────────────────────────────────────── -->
+  <section id="tab-settings" class="section">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Settings</div>
+        <div class="page-subtitle">Configure payroll cycle and attendance rules</div>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <div class="settings-card">
+        <div class="s-title">Payroll Cycle</div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Cycle Start Day (1 – 28)</label>
+          <input type="number" class="form-control" id="s-cycle-day" min="1" max="28" value="25" style="min-width:100px; max-width:120px">
+        </div>
+        <div class="text-muted" style="font-size:12px;margin-bottom:12px" id="s-cycle-preview">Cycle: 25 Sep → 24 Oct</div>
+        <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Settings</button>
+        <div id="settings-saved" class="alert alert-success mt-8" hidden>✅ Settings saved successfully.</div>
+      </div>
+
+      <div class="settings-card">
+        <div class="s-title">Office Timings</div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Office In Time</label>
+          <input type="time" class="form-control" id="s-in-time" value="10:05" style="min-width:120px;max-width:140px">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Grace Period (minutes)</label>
+          <input type="number" class="form-control" id="s-grace" min="0" max="30" value="0" style="min-width:100px;max-width:120px">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Late Window End</label>
+          <input type="time" class="form-control" id="s-late-end" value="10:20" style="min-width:120px;max-width:140px">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Office Out Time</label>
+          <input type="time" class="form-control" id="s-out-time" value="18:30" style="min-width:120px;max-width:140px">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Target Shift (minutes)</label>
+          <input type="number" class="form-control" id="s-target" min="60" max="720" value="510" style="min-width:120px;max-width:140px">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label>Free Late Per Cycle</label>
+          <input type="number" class="form-control" id="s-free-late" min="0" max="10" value="4" style="min-width:100px;max-width:120px">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Settings</button>
+      </div>
+
+      <div class="settings-card">
+        <div class="s-title">Data Management</div>
+        <div style="font-size:13px; color:var(--fg-2); margin-bottom:14px">
+          Manage imported attendance data and settings stored in this browser.
+        </div>
+        <div class="gap-row" style="flex-direction:column; align-items:flex-start; gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="exportJSON()">Export Data (JSON)</button>
+          <button class="btn btn-danger btn-sm" onclick="clearAllData()">Clear All Data</button>
+        </div>
+        <div id="data-info" class="mt-8" style="font-size:12px; color:var(--fg-3)" id="data-info"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     HOLIDAY MODAL
+════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="holiday-modal">
+  <div class="modal">
+    <div class="modal-title">Add Holiday</div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Date</label>
+      <input type="date" class="form-control" id="h-date">
+    </div>
+    <div class="form-group">
+      <label>Holiday Name</label>
+      <input type="text" class="form-control" id="h-name" placeholder="e.g. Diwali, Republic Day…">
+    </div>
+    <div id="h-error" class="alert alert-error mt-8" hidden><span>⚠️</span><span id="h-error-msg"></span></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeHolidayModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="addHoliday()">Add Holiday</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STORAGE
+═══════════════════════════════════════════════════════════════════════ */
+const Store = {
+  get(key, def = null) {
+    try { const v = localStorage.getItem('essl_' + key); return v !== null ? JSON.parse(v) : def; } catch { return def; }
+  },
+  set(key, val) {
+    try { localStorage.setItem('essl_' + key, JSON.stringify(val)); } catch {}
+  },
+  remove(key) { try { localStorage.removeItem('essl_' + key); } catch {} }
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   APP STATE
+═══════════════════════════════════════════════════════════════════════ */
+const APP = {
+  settings: Store.get('settings', {
+    cycleStartDay: 25,
+    officeIn: '10:05',
+    grace: 0,
+    lateEnd: '10:20',
+    officeOut: '18:30',
+    targetMins: 510,
+    freeLate: 4
+  }),
+  employees: Store.get('employees', {}),    // { empId: { name, dept, designation } }
+  rawData: Store.get('rawData', {}),        // { empId: { 'YYYY-MM-DD': { in, out, status, ot } } }
+  processed: Store.get('processed', {}),    // { empId: { 'YYYY-MM-DD': ProcessedRecord } }
+  holidays: Store.get('holidays', []),      // [{ date:'YYYY-MM-DD', name }]
+  importBuffer: null,                        // temp before confirm
+  cycleInfo: null
+};
+
+// One-time migration for existing browser data created with the old 10:00 + 5-minute grace rule.
+if (APP.settings.officeIn === '10:00' && Number(APP.settings.grace) === 5) {
+  APP.settings.officeIn = '10:05';
+  APP.settings.grace = 0;
+  APP.settings.lateEnd = '10:20';
+  APP.settings.officeOut = '18:30';
+  APP.settings.freeLate = 4;
+  Store.set('settings', APP.settings);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DATE UTILITIES — all UTC, no timezone shift
+═══════════════════════════════════════════════════════════════════════ */
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function utcDate(year, month, day) {
+  return new Date(Date.UTC(year, month, day));
+}
+function parseYMD(str) {
+  // 'YYYY-MM-DD' → UTC Date
+  const [y, m, d] = str.split('-').map(Number);
+  return utcDate(y, m - 1, d);
+}
+function toYMD(d) {
+  const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), day = String(d.getUTCDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function fmtDate(d) {
+  return `${String(d.getUTCDate()).padStart(2,'0')} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+function isWeeklyOff(date) {
+  const dow = date.getUTCDay(); // 0=Sun,6=Sat
+  if (dow === 0) return true; // Sunday
+  if (dow === 6) {
+    // 2nd or 4th Saturday?
+    const dom = date.getUTCDate();
+    const week = Math.ceil(dom / 7);
+    return week === 2 || week === 4;
+  }
+  return false;
+}
+function isHoliday(dateStr) {
+  return APP.holidays.some(h => h.date === dateStr);
+}
+function getHolidayName(dateStr) {
+  const h = APP.holidays.find(h => h.date === dateStr);
+  return h ? h.name : '';
+}
+function timeToMins(t) {
+  // 'HH:MM' or 'HH:MM:SS' → minutes from midnight
+  if (!t || typeof t !== 'string') return null;
+  const parts = t.trim().split(':');
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+function minsToTime(mins) {
+  if (mins === null || mins === undefined) return '—';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function fmtDuration(mins) {
+  if (mins === null || mins < 0) return '—';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+function getCycleRange(refDate) {
+  const sd = APP.settings.cycleStartDay;
+  const d = refDate || new Date();
+  const yr = d.getFullYear ? d.getFullYear() : parseInt(String(d).substring(0,4));
+  const mo = d.getMonth ? d.getMonth() : parseInt(String(d).substring(5,7)) - 1;
+  const dom = d.getDate ? d.getDate() : parseInt(String(d).substring(8,10));
+  let startY = yr, startM = mo;
+  if (dom < sd) { startM--; if (startM < 0) { startM = 11; startY--; } }
+  const start = utcDate(startY, startM, sd);
+  const endDate = new Date(start);
+  endDate.setUTCMonth(endDate.getUTCMonth() + 1);
+  endDate.setUTCDate(endDate.getUTCDate() - 1);
+  return { start, end: endDate };
+}
+function getDatesInRange(start, end) {
+  const dates = [];
+  let cur = new Date(start);
+  while (cur <= end) { dates.push(new Date(cur)); cur.setUTCDate(cur.getUTCDate() + 1); }
+  return dates;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ESSL EXCEL PARSER — "Monthly Status Report (Detailed Work Duration)"
+   Format: Each employee has 9 data rows per block (Status, InTime,
+   OutTime, Duration, Late By, Early By, OT, Shift), with dates as
+   sparse columns mapped by the "Days" header row ("1 Th", "2 F", …)
+═══════════════════════════════════════════════════════════════════════ */
+function parseESSLExcel(buffer) {
+  const wb = XLSX.read(buffer, { type: 'array', cellDates: false, raw: false });
+  const results = { employees: {}, rawData: {}, meta: {}, format: 'essl-workduration' };
+
+  for (const sheetName of wb.SheetNames) {
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+    if (rows.length < 5) continue;
+
+    const flat = rows.map(r => r.map(c => String(c == null ? '' : c).trim()));
+
+    // ── 1. Find the "Days" header row ──────────────────────────────────
+    const daysRowIdx = flat.findIndex(r => r[0] === 'Days');
+    if (daysRowIdx === -1) {
+      // Try fallback: long-format (one row per emp per day)
+      const lp = parseLongFormat(flat);
+      if (Object.keys(lp.rawData).length > 0) {
+        Object.assign(results.employees, lp.employees);
+        Object.assign(results.rawData, lp.rawData);
+        results.format = 'long'; results.meta = lp.meta;
+        break;
+      }
+      continue;
+    }
+
+    // ── 2. Build column → {day, abbr} map ──────────────────────────────
+    // Day cells look like "1 Th", "10 St", "31 M"
+    const colDayMap = {};
+    flat[daysRowIdx].forEach((cell, c) => {
+      const m = cell.match(/^(\d{1,2})\s+([A-Za-z]+)/);
+      if (m) colDayMap[c] = { day: parseInt(m[1], 10), abbr: m[2] };
+    });
+    if (Object.keys(colDayMap).length === 0) continue;
+
+    // ── 3. Extract year & month from date-range row ─────────────────────
+    // e.g. "Oct 01 2026  To  Oct 13 2026"
+    let year = new Date().getFullYear(), month = new Date().getMonth();
+    const MN = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    for (let i = 0; i < Math.min(flat.length, 10); i++) {
+      const txt = flat[i].join(' ');
+      const m = txt.match(/\b([A-Za-z]{3,9})\s+\d{1,2}\s+(\d{4})\b/);
+      if (m) {
+        const mo = MN.indexOf(m[1].toLowerCase().substring(0,3));
+        if (mo !== -1) { month = mo; year = parseInt(m[2], 10); break; }
+      }
+    }
+    results.meta = { year, month };
+
+    // ── 4. Parse employee blocks ────────────────────────────────────────
+    // Each block:
+    //   Employee: row → "ID : NAME"
+    //   +1 Status, +2 InTime, +3 OutTime, +4 Duration,
+    //   +5 Late By, +6 Early By, +7 OT, +8 Shift
+    let currentDept = '';
+    for (let i = 0; i < flat.length; i++) {
+      const col0 = flat[i][0];
+
+      if (col0 === 'Department:') {
+        for (let c = 1; c < flat[i].length; c++) {
+          if (flat[i][c]) { currentDept = flat[i][c]; break; }
+        }
+        continue;
+      }
+
+      if (col0 !== 'Employee:') continue;
+
+      // Find "ID : NAME" cell in this row
+      let empId = '', empName = '';
+      for (let c = 0; c < flat[i].length; c++) {
+        const m = flat[i][c].match(/^(\d+)\s*:\s*(.+?)(?:\s+Total.*)?$/i);
+        if (m) { empId = m[1].trim(); empName = m[2].trim(); break; }
+      }
+      if (!empId) continue;
+
+      // Safely grab rows below (verify labels as sanity check)
+      const safeRow = (off) => (i + off < flat.length) ? flat[i + off] : [];
+      const statusRow = safeRow(1);  // 'Status'
+      const inRow     = safeRow(2);  // 'InTime'
+      const outRow    = safeRow(3);  // 'OutTime'
+      // row+4 = Duration (skip — we recalculate from in/out)
+      const lateRow   = safeRow(5);  // 'Late By'   (informational)
+      const earlyRow  = safeRow(6);  // 'Early By'  (informational)
+      const otRow     = safeRow(7);  // 'OT'
+
+      results.employees[empId] = { name: empName, dept: currentDept, designation: '' };
+      if (!results.rawData[empId]) results.rawData[empId] = {};
+
+      for (const [colStr, info] of Object.entries(colDayMap)) {
+        const c = parseInt(colStr, 10);
+        const rawStat = statusRow[c] || '';
+        const status  = normalizeESSLStatus(rawStat);
+        const inT     = extractTime(inRow[c]);
+        const outT    = extractTime(outRow[c]);
+        const otMins  = parseHHMM(otRow[c] || '');
+
+        try {
+          const d = utcDate(year, month, info.day);
+          results.rawData[empId][toYMD(d)] = { in: inT, out: outT, status, ot: otMins };
+        } catch { /* invalid date — skip */ }
+      }
+    }
+
+    if (Object.keys(results.employees).length > 0) break;
+  }
+
+  return results;
+}
+
+/** Normalise ESSL status strings to our internal codes */
+function normalizeESSLStatus(raw) {
+  const s = raw.toUpperCase().trim();
+  if (!s) return '';
+  if (s === 'WOP') return 'P';          // Worked on Off-day → Present
+  if (s.startsWith('WO')) return 'WO';  // WO, WO*, etc.
+  if (s === 'H' || s === 'HOLIDAY') return 'H';
+  if (s.startsWith('A')) return 'A';    // A, AB, ABSENT
+  if (s.startsWith('P')) return 'P';    // P, PR, PRESENT
+  if (s === 'HD' || s === 'HALF') return 'HD';
+  return s;
+}
+
+/** Extract "HH:MM" from a cell that might be "09:44", "9:44:00", etc. */
+function extractTime(raw) {
+  if (!raw) return null;
+  const m = String(raw).match(/(\d{1,2}:\d{2})/);
+  return m ? m[1] : null;
+}
+
+/** Parse "H:MM" or "HH:MM" OT string → minutes */
+function parseHHMM(raw) {
+  if (!raw || raw === '00:00') return 0;
+  const m = String(raw).match(/^(\d+):(\d{2})$/);
+  if (!m) return 0;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
+// ── Fallback: Long-format (one row per emp per day) ─────────────────────
+function parseLongFormat(flat) {
+  const results = { employees: {}, rawData: {}, meta: {} };
+  const MN = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+
+  // Find header row
+  let hi = -1;
+  for (let i = 0; i < Math.min(flat.length, 15); i++) {
+    const j = flat[i].join(' ').toLowerCase();
+    if (['emp','name','date','in','out','status'].filter(k => j.includes(k)).length >= 3) { hi = i; break; }
+  }
+  if (hi === -1) return results;
+
+  const hdr = flat[hi].map(c => c.toLowerCase());
+  const ci = {};
+  hdr.forEach((h, i) => {
+    if (h.includes('emp') && (h.includes('code')||h.includes('id')||h.includes('no'))) ci.id = i;
+    else if (h.includes('name') && !h.includes('dept')) ci.name = i;
+    else if (h.includes('dept')) ci.dept = i;
+    else if (h === 'date' || h.includes('att date')) ci.date = i;
+    else if ((h.includes('in') && h.includes('time')) || h === 'in') ci.inT = i;
+    else if ((h.includes('out') && h.includes('time')) || h === 'out') ci.outT = i;
+    else if (h === 'status' || h.includes('att status')) ci.status = i;
+    else if (h.includes('ot') || h.includes('overtime')) ci.ot = i;
+  });
+  if (ci.id === undefined || ci.date === undefined) return results;
+
+  for (let i = hi + 1; i < flat.length; i++) {
+    const r = flat[i];
+    if (r.every(c => !c)) continue;
+    const empId = r[ci.id] || ''; const name = r[ci.name] || ''; const dept = r[ci.dept] || '';
+    const dateRaw = r[ci.date] || '';
+    if (!empId || !dateRaw) continue;
+
+    // Parse date
+    let dateStr = null;
+    let m;
+    if ((m = dateRaw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/))) dateStr = toYMD(utcDate(+m[3],+m[2]-1,+m[1]));
+    else if ((m = dateRaw.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/))) dateStr = toYMD(utcDate(+m[1],+m[2]-1,+m[3]));
+    else if ((m = dateRaw.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/))) {
+      const mo = MN.indexOf(m[2].toLowerCase().substring(0,3));
+      if (mo !== -1) dateStr = toYMD(utcDate(+m[3], mo, +m[1]));
+    }
+    if (!dateStr) continue;
+
+    if (!results.employees[empId]) results.employees[empId] = { name, dept, designation: '' };
+    if (!results.rawData[empId]) results.rawData[empId] = {};
+
+    const rawStat = (r[ci.status] || '').toUpperCase();
+    const status = normalizeESSLStatus(rawStat) || ((r[ci.inT] || r[ci.outT]) ? 'P' : 'A');
+    const inT = extractTime(r[ci.inT]);
+    const outT = extractTime(r[ci.outT]);
+    const ot = parseHHMM(r[ci.ot] || '');
+    results.rawData[empId][dateStr] = { in: inT, out: outT, status, ot };
+  }
+
+  return results;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ATTENDANCE PROCESSOR
+═══════════════════════════════════════════════════════════════════════ */
+function processAttendance() {
+  const s = APP.settings;
+  const inMins = timeToMins(s.officeIn);
+  const graceEnd = inMins + s.grace; // 10:05
+  const lateEnd = timeToMins(s.lateEnd);   // 10:20 AM
+  const outMins = timeToMins(s.officeOut); // 18:30
+  const freeLate = s.freeLate;
+
+  const cycle = getCycleForSelect();
+  const cycDates = getDatesInRange(cycle.start, cycle.end);
+
+  const processed = {};
+  let statsLate = 0, statsDeduct = 0, statsRecords = 0, statsOT = 0;
+
+  // Count late per employee per cycle
+  const lateCount = {};
+
+  for (const [empId, empDays] of Object.entries(APP.rawData)) {
+    if (!lateCount[empId]) lateCount[empId] = 0;
+    processed[empId] = {};
+
+    for (const date of cycDates) {
+      const dateStr = toYMD(date);
+      const raw = empDays[dateStr] || {};
+      const rec = processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, s.targetMins, freeLate, lateCount, empId);
+      processed[empId][dateStr] = rec;
+
+      if (rec.isLate) statsLate++;
+      if (rec.countsTowardFreeLate) lateCount[empId]++;
+      if (rec.deduction > 0) statsDeduct += rec.deduction;
+      if (raw.status === 'P' || rec.status === 'P') statsRecords++;
+      statsOT += rec.otMins || 0;
+    }
+  }
+
+  APP.processed = processed;
+  Store.set('processed', processed);
+
+  // Show results
+  document.getElementById('pr-records').textContent = statsRecords;
+  document.getElementById('pr-late').textContent = statsLate;
+  document.getElementById('pr-deductions').textContent = statsDeduct.toFixed(2);
+  document.getElementById('pr-ot').textContent = Math.round(statsOT / 60);
+  document.getElementById('process-results').hidden = false;
+
+  updateDashboard();
+}
+
+function processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, targetMins, freeLate, lateCount, empId) {
+  const date = parseYMD(dateStr);
+  const dow = date.getUTCDay();
+  const holName = getHolidayName(dateStr);
+
+  // Weekly off
+  if (isWeeklyOff(date)) {
+    return { status: 'WO', display: 'Weekly Off', deduction: 0, isLate: false, isEarly: false, lateMin: 0, earlyMin: 0, otMins: 0, durationMins: 0, remark: 'Weekly Off', shortLeave: false, halfDay: false };
+  }
+
+  // Holiday override
+  const rawStatus = (raw.status || '').toUpperCase();
+  if (holName) {
+    if (rawStatus === 'A' || rawStatus === '' || !rawStatus) {
+      return { status: 'H', display: 'Holiday', deduction: 0, isLate: false, isEarly: false, lateMin: 0, earlyMin: 0, otMins: 0, durationMins: 0, remark: holName, shortLeave: false, halfDay: false };
+    }
+  }
+
+  // Absent
+  if (rawStatus === 'A' || (!raw.in && !raw.out && rawStatus !== 'P')) {
+    return { status: 'A', display: 'Absent', deduction: 1.0, isLate: false, isEarly: false, lateMin: 0, earlyMin: 0, otMins: 0, durationMins: 0, remark: 'Absent — Full Day', shortLeave: false, halfDay: false };
+  }
+
+  // WO from raw (if not overridden above)
+  if (rawStatus === 'WO') {
+    return { status: 'WO', display: 'Weekly Off', deduction: 0, isLate: false, isEarly: false, lateMin: 0, earlyMin: 0, otMins: 0, durationMins: 0, remark: 'Weekly Off', shortLeave: false, halfDay: false };
+  }
+
+  // Present — calculate
+  const actualIn = timeToMins(raw.in);
+  const actualOut = timeToMins(raw.out);
+  let deduction = 0;
+  let isLate = false, isEarly = false, lateMin = 0, earlyMin = 0;
+  let remark = '';
+  let shortLeave = false, halfDay = false;
+
+  // Duration
+  let durationMins = 0;
+  if (actualIn !== null && actualOut !== null) {
+    durationMins = actualOut - actualIn;
+    if (durationMins < 0) durationMins = 0; // overnight edge case
+  }
+
+  // OT calculation
+  let otMins = 0; // Overtime is not used for payroll.
+
+  // ── Arrival / late deduction rules ──
+  let countsTowardFreeLate = false;
+  if (actualIn !== null && actualIn > graceEnd) {
+    lateMin = actualIn - inMins;
+    isLate = true;
+
+    if (actualIn > timeToMins('12:00')) {
+      // Any arrival after noon (including after 2:15 PM) is a half day.
+      deduction += 0.5;
+      halfDay = true;
+      remark += 'Arrival after 12:00 PM (–0.50 day); ';
+    } else if (actualIn > lateEnd) {
+      // 10:20 AM to 12:00 PM: direct deduction, no free-late allowance.
+      deduction += 0.25;
+      remark += `Late after 10:20 ${lateMin}min (–0.25); `;
+    } else {
+      // 10:06 AM to 10:20 AM: four free occurrences per payroll cycle.
+      countsTowardFreeLate = true;
+      const currentCount = lateCount[empId] || 0;
+      if (currentCount >= freeLate) {
+        deduction += 0.25;
+        remark += `Late ${lateMin}min (–0.25); `;
+      } else {
+        remark += `Late ${lateMin}min (free ${currentCount + 1}/${freeLate}); `;
+      }
+    }
+  }
+
+  // ── Early Out Check ──
+  if (actualOut !== null && actualOut < outMins) {
+    earlyMin = outMins - actualOut;
+    isEarly = true;
+    deduction += 0.25;
+    remark += `Early Out ${earlyMin}min (–0.25); `;
+  }
+
+  // Short-leave rule remains removed; half-day deduction is applied for arrivals after noon.
+  if (actualIn === null && actualOut === null) {
+    // No punch data at all — treat as absent
+    deduction = 1.0;
+    remark = 'No Punch Data';
+  }
+
+  remark = remark.replace(/;\s*$/, '');
+  if (!remark) remark = '✓ OK';
+
+  const status = deduction >= 1.0 ? 'A' : (halfDay ? 'HD' : (shortLeave ? 'SL' : 'P'));
+  const display = deduction >= 1.0 ? 'Full Day Out' : (halfDay ? 'Half Day' : (shortLeave ? 'Short Leave' : 'Present'));
+
+  return {
+    status, display, deduction,
+    isLate, isEarly, lateMin, earlyMin,
+    otMins, durationMins,
+    remark, shortLeave, halfDay, countsTowardFreeLate,
+    inTime: raw.in || null, outTime: raw.out || null
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════════════════════════════════ */
+function switchTab(tabId) {
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    const active = t.dataset.tab === tabId;
+    t.classList.toggle('active', active);
+    t.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('.section').forEach(s => {
+    s.classList.toggle('active', s.id === 'tab-' + tabId);
+  });
+  if (tabId === 'dashboard') updateDashboard();
+  if (tabId === 'report') populateEmpDropdown();
+  if (tabId === 'holidays') renderHolidays();
+  if (tabId === 'process') populateCycleSelect();
+}
+
+function updateDashboard() {
+  const cycle = getCycleRange(new Date());
+  APP.cycleInfo = cycle;
+  const startStr = fmtDate(cycle.start), endStr = fmtDate(cycle.end);
+  document.getElementById('dash-cycle-text').textContent = `${startStr} – ${endStr}`;
+  document.getElementById('dash-cycle-sub').textContent = `Payroll Cycle: ${startStr} to ${endStr}`;
+
+  const hasData = Object.keys(APP.employees).length > 0;
+  document.getElementById('dash-no-data').hidden = hasData;
+
+  if (!hasData) return;
+
+  // Aggregate from processed if available, else from raw
+  let present = 0, absent = 0, late = 0, early = 0, halfDay = 0, deductions = 0;
+
+  const data = Object.keys(APP.processed).length > 0 ? APP.processed : null;
+
+  if (data) {
+    for (const empData of Object.values(data)) {
+      for (const rec of Object.values(empData)) {
+        if (rec.status === 'P' || rec.status === 'HD' || rec.status === 'SL') present++;
+        if (rec.status === 'A') absent++;
+        if (rec.isLate) late++;
+        if (rec.isEarly) early++;
+        if (rec.halfDay) halfDay++;
+        deductions += rec.deduction || 0;
+      }
+    }
+  } else {
+    for (const empData of Object.values(APP.rawData)) {
+      for (const rec of Object.values(empData)) {
+        if (rec.status === 'P') present++;
+        if (rec.status === 'A') absent++;
+      }
+    }
+  }
+
+  document.getElementById('ds-present').textContent = present;
+  document.getElementById('ds-absent').textContent = absent;
+  document.getElementById('ds-late').textContent = late;
+  document.getElementById('ds-early').textContent = early;
+  document.getElementById('ds-halfday').textContent = halfDay;
+  document.getElementById('ds-deductions').textContent = deductions.toFixed(2);
+}
+
+function populateEmpDropdown() {
+  const sel = document.getElementById('report-emp');
+  sel.innerHTML = '<option value="">— Select Employee —</option>';
+  for (const [id, emp] of Object.entries(APP.employees)) {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = `${id} — ${emp.name}${emp.dept ? ' (' + emp.dept + ')' : ''}`;
+    sel.appendChild(opt);
+  }
+
+  // Default date range: current cycle
+  const cycle = getCycleRange(new Date());
+  document.getElementById('report-from').value = toYMD(cycle.start);
+  document.getElementById('report-to').value = toYMD(cycle.end);
+}
+
+function populateCycleSelect() {
+  const sel = document.getElementById('proc-cycle');
+  const cycle = getCycleRange(new Date());
+  sel.innerHTML = `<option value="${toYMD(cycle.start)}|${toYMD(cycle.end)}">${fmtDate(cycle.start)} – ${fmtDate(cycle.end)}</option>`;
+  // Add previous cycle
+  const prev = new Date(cycle.start); prev.setUTCDate(prev.getUTCDate() - 1);
+  const prevCycle = getCycleRange(prev);
+  sel.innerHTML += `<option value="${toYMD(prevCycle.start)}|${toYMD(prevCycle.end)}">${fmtDate(prevCycle.start)} – ${fmtDate(prevCycle.end)}</option>`;
+}
+
+function getCycleForSelect() {
+  const sel = document.getElementById('proc-cycle');
+  if (!sel || !sel.value) return getCycleRange(new Date());
+  const [s, e] = sel.value.split('|');
+  return { start: parseYMD(s), end: parseYMD(e) };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   REPORT GENERATION
+═══════════════════════════════════════════════════════════════════════ */
+function generateReport() {
+  const empId = document.getElementById('report-emp').value;
+  const fromStr = document.getElementById('report-from').value;
+  const toStr = document.getElementById('report-to').value;
+  const errEl = document.getElementById('report-date-error');
+  const outEl = document.getElementById('report-output');
+
+  errEl.hidden = true;
+  outEl.hidden = true;
+
+  if (!empId || !fromStr || !toStr) return;
+
+  const from = parseYMD(fromStr), to = parseYMD(toStr);
+  const diffDays = Math.round((to - from) / 86400000) + 1;
+
+  if (diffDays > 31) { errEl.hidden = false; return; }
+  if (diffDays < 1)  { errEl.hidden = false; return; }
+
+  const emp = APP.employees[empId] || { name: empId, dept: '', designation: '' };
+  document.getElementById('report-emp-title').textContent = `${emp.name} (${empId}) — ${fmtDate(from)} to ${fmtDate(to)}`;
+
+  const dates = getDatesInRange(from, to);
+  const rawEmp = APP.rawData[empId] || {};
+  const procEmp = APP.processed[empId] || {};
+
+  // Late counter for the period
+  const lateCount = {};
+  lateCount[empId] = 0;
+  const s = APP.settings;
+  const inMins = timeToMins(s.officeIn);
+  const graceEnd = inMins + s.grace;
+  const lateEnd = timeToMins(s.lateEnd);
+  const outMins = timeToMins(s.officeOut);
+
+  const rows = [];
+  const totals = { duration: 0, lateMin: 0, earlyMin: 0, ot: 0, deduction: 0, present: 0, absent: 0, wo: 0, holiday: 0, late: 0, early: 0, shortLeave: 0, halfDay: 0 };
+
+  for (const date of dates) {
+    const dateStr = toYMD(date);
+    const raw = rawEmp[dateStr] || {};
+    // Use processed data if available, else process on-the-fly
+    const rec = procEmp[dateStr] || processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, s.targetMins, s.freeLate, lateCount, empId);
+
+    if (rec.isLate) lateCount[empId]++;
+
+    // Status counts
+    if (rec.status === 'WO') totals.wo++;
+    else if (rec.status === 'H') totals.holiday++;
+    else if (rec.status === 'A') totals.absent++;
+    else { totals.present++; }
+    if (rec.isLate) totals.late++;
+    if (rec.isEarly) totals.early++;
+    if (rec.shortLeave) totals.shortLeave++;
+    if (rec.halfDay) totals.halfDay++;
+    totals.duration += rec.durationMins || 0;
+    totals.lateMin += rec.lateMin || 0;
+    totals.earlyMin += rec.earlyMin || 0;
+    totals.ot += rec.otMins || 0;
+    totals.deduction += rec.deduction || 0;
+
+    rows.push({ date, dateStr, rec, raw });
+  }
+
+  // Render table
+  const tbody = document.getElementById('report-tbody');
+  tbody.innerHTML = '';
+
+  for (const { date, rec, raw } of rows) {
+    const tr = document.createElement('tr');
+    const statusBadge = getStatusBadge(rec.status);
+    tr.innerHTML = `
+      <td class="text">${DAY_SHORT[date.getUTCDay()]}</td>
+      <td class="text">${fmtDate(date)}</td>
+      <td>${raw.in || rec.inTime || '—'}</td>
+      <td>${raw.out || rec.outTime || '—'}</td>
+      <td>${rec.durationMins ? fmtDuration(rec.durationMins) : '—'}</td>
+      <td class="text">${statusBadge}</td>
+      <td class="${rec.lateMin > 0 ? 'text-amber fw-700' : ''}">${rec.lateMin > 0 ? rec.lateMin + 'm' : '—'}</td>
+      <td class="${rec.earlyMin > 0 ? 'text-amber' : ''}">${rec.earlyMin > 0 ? rec.earlyMin + 'm' : '—'}</td>
+      <td class="${rec.shortLeave ? 'text-amber' : ''}">${rec.shortLeave ? 'SL' : '—'}</td>
+      <td class="${rec.halfDay ? 'text-amber' : ''}">${rec.halfDay ? 'HD' : '—'}</td>
+      <td class="${rec.otMins > 0 ? 'text-green' : ''}">${rec.otMins > 0 ? Math.round(rec.otMins) + 'm' : '—'}</td>
+      <td class="${rec.deduction > 0 ? 'text-red fw-700' : 'text-muted'}">${rec.deduction > 0 ? '–' + rec.deduction.toFixed(2) : '0'}</td>
+      <td class="text" style="font-size:11px; color:var(--fg-2)">${rec.remark || ''}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // Footer totals
+  const tfoot = document.getElementById('report-tfoot');
+  tfoot.innerHTML = `<tr class="tfoot">
+    <td colspan="2" class="text">TOTALS</td>
+    <td colspan="3">${fmtDuration(totals.duration)}</td>
+    <td class="text">P:${totals.present} A:${totals.absent} WO:${totals.wo} H:${totals.holiday}</td>
+    <td class="text-amber">${totals.lateMin > 0 ? totals.lateMin + 'm' : '—'}</td>
+    <td class="text-amber">${totals.earlyMin > 0 ? totals.earlyMin + 'm' : '—'}</td>
+    <td class="text-amber">${totals.shortLeave || '—'}</td>
+    <td class="text-amber">${totals.halfDay || '—'}</td>
+    <td class="text-green">${totals.ot > 0 ? Math.round(totals.ot) + 'm' : '—'}</td>
+    <td class="text-red fw-700">${totals.deduction > 0 ? '–' + totals.deduction.toFixed(2) : '0'}</td>
+    <td></td>
+  </tr>`;
+
+  // Deduction summary card
+  document.getElementById('ded-total-days').textContent = totals.deduction.toFixed(2);
+  const totalTimeMins = totals.deduction * (s.targetMins || 510);
+  document.getElementById('ded-total-time').textContent = `≈ ${fmtDuration(totalTimeMins)} total time deducted`;
+
+  const breakdown = document.getElementById('ded-breakdown');
+  breakdown.innerHTML = `
+    <div class="deduction-item"><div class="d-label">Present Days</div><div class="d-val">${totals.present}</div></div>
+    <div class="deduction-item"><div class="d-label">Absent Days</div><div class="d-val">${totals.absent}</div></div>
+    <div class="deduction-item"><div class="d-label">Late Count</div><div class="d-val">${totals.late}</div></div>
+    <div class="deduction-item"><div class="d-label">Early Out</div><div class="d-val">${totals.early}</div></div>
+    <div class="deduction-item"><div class="d-label">Short Leave</div><div class="d-val">${totals.shortLeave}</div></div>
+    <div class="deduction-item"><div class="d-label">Half Days</div><div class="d-val">${totals.halfDay}</div></div>
+    <div class="deduction-item"><div class="d-label">Weekly Off</div><div class="d-val">${totals.wo}</div></div>
+    <div class="deduction-item"><div class="d-label">OT Minutes</div><div class="d-val">${Math.round(totals.ot)}</div></div>
+  `;
+
+  outEl.hidden = false;
+}
+
+function getStatusBadge(status) {
+  const map = { P:'badge-p Present', A:'badge-a Absent', WO:'badge-wo Weekly Off', H:'badge-h Holiday', HD:'badge-hd Half Day', SL:'badge-hl Short Leave' };
+  const [cls, label] = (map[status] || 'badge-wo ' + status).split(' ');
+  return `<span class="badge ${cls}">${label || status}</span>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FILE IMPORT
+═══════════════════════════════════════════════════════════════════════ */
+function handleFile(file) {
+  if (!file) return;
+  const showAlert = (msg, type = 'info') => {
+    const el = document.getElementById('import-alert');
+    el.className = `alert alert-${type} mt-16`;
+    el.hidden = false;
+    document.getElementById('import-alert-msg').textContent = msg;
+  };
+
+  showAlert('Parsing Excel file…');
+  document.getElementById('import-preview').hidden = true;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const parsed = parseESSLExcel(data);
+
+      if (!Object.keys(parsed.employees).length) {
+        showAlert('No employee data found. Please check the file format. Expected: wide format (dates as columns) or long format (one row per day).', 'error');
+        return;
+      }
+
+      APP.importBuffer = parsed;
+
+      // Populate preview table
+      const tbody = document.getElementById('preview-tbody');
+      tbody.innerHTML = '';
+      let empCount = 0;
+
+      for (const [empId, emp] of Object.entries(parsed.employees)) {
+        const days = Object.values(parsed.rawData[empId] || {});
+        const present = days.filter(d => d.status === 'P').length;
+        const absent = days.filter(d => d.status === 'A').length;
+        const wo = days.filter(d => d.status === 'WO').length;
+        const otMins = days.reduce((s, d) => s + (d.ot || 0), 0);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${empId}</td>
+          <td class="text">${emp.name}</td>
+          <td class="text">${emp.dept || '—'}</td>
+          <td class="text-right">${days.length}</td>
+          <td class="text-right text-green">${present}</td>
+          <td class="text-right text-red">${absent}</td>
+          <td class="text-right text-muted">${wo}</td>
+          <td class="text-right text-accent">${otMins ? otMins.toFixed(1) : '—'}</td>
+        `;
+        tbody.appendChild(tr);
+        empCount++;
+      }
+
+      document.getElementById('preview-count').textContent = empCount;
+      document.getElementById('import-format-text').textContent = `Detected format: ${parsed.format === 'wide' ? 'Wide (dates as columns)' : 'Long (one row per day)'}. Month: ${parsed.meta.year ? MONTH_NAMES[parsed.meta.month] + ' ' + parsed.meta.year : 'auto-detected'}.`;
+      document.getElementById('import-preview').hidden = false;
+      showAlert(`Found ${empCount} employees. Review the preview and click "Confirm Import".`, 'success');
+    } catch (err) {
+      console.error(err);
+      showAlert('Error parsing file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function confirmImport() {
+  if (!APP.importBuffer) return;
+  Object.assign(APP.employees, APP.importBuffer.employees);
+  // Merge raw data
+  for (const [empId, days] of Object.entries(APP.importBuffer.rawData)) {
+    if (!APP.rawData[empId]) APP.rawData[empId] = {};
+    Object.assign(APP.rawData[empId], days);
+  }
+  Store.set('employees', APP.employees);
+  Store.set('rawData', APP.rawData);
+  APP.importBuffer = null;
+
+  const alert = document.getElementById('import-alert');
+  alert.className = 'alert alert-success mt-16';
+  alert.hidden = false;
+  document.getElementById('import-alert-msg').textContent = `✅ Import confirmed! ${Object.keys(APP.employees).length} employees loaded. Navigate to "Process" or "User Report".`;
+  document.getElementById('import-preview').hidden = true;
+  updateDashboard();
+}
+
+function cancelImport() {
+  APP.importBuffer = null;
+  document.getElementById('import-preview').hidden = true;
+  document.getElementById('import-alert').hidden = true;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HOLIDAYS
+═══════════════════════════════════════════════════════════════════════ */
+function renderHolidays() {
+  const list = document.getElementById('holiday-list');
+  const empty = document.getElementById('holiday-empty');
+  list.innerHTML = '';
+
+  const sorted = [...APP.holidays].sort((a, b) => a.date.localeCompare(b.date));
+  empty.hidden = sorted.length > 0;
+
+  for (const h of sorted) {
+    const d = parseYMD(h.date);
+    const div = document.createElement('div');
+    div.className = 'holiday-item';
+    div.innerHTML = `
+      <div class="holiday-info">
+        <div class="holiday-date">${fmtDate(d)} (${DAY_NAMES[d.getUTCDay()]})</div>
+        <div class="holiday-name">${h.name}</div>
+      </div>
+      <button class="btn btn-danger btn-xs" onclick="removeHoliday('${h.date}')">Remove</button>
+    `;
+    list.appendChild(div);
+  }
+}
+
+function openHolidayModal() {
+  document.getElementById('h-date').value = '';
+  document.getElementById('h-name').value = '';
+  document.getElementById('h-error').hidden = true;
+  document.getElementById('holiday-modal').classList.add('open');
+}
+function closeHolidayModal() { document.getElementById('holiday-modal').classList.remove('open'); }
+
+function addHoliday() {
+  const date = document.getElementById('h-date').value;
+  const name = document.getElementById('h-name').value.trim();
+  const errEl = document.getElementById('h-error');
+  const errMsg = document.getElementById('h-error-msg');
+
+  if (!date) { errEl.hidden = false; errMsg.textContent = 'Please select a date.'; return; }
+  if (!name) { errEl.hidden = false; errMsg.textContent = 'Please enter a holiday name.'; return; }
+  if (APP.holidays.some(h => h.date === date)) { errEl.hidden = false; errMsg.textContent = 'This date is already a holiday.'; return; }
+
+  APP.holidays.push({ date, name });
+  APP.holidays.sort((a, b) => a.date.localeCompare(b.date));
+  Store.set('holidays', APP.holidays);
+  closeHolidayModal();
+  renderHolidays();
+}
+
+function removeHoliday(date) {
+  APP.holidays = APP.holidays.filter(h => h.date !== date);
+  Store.set('holidays', APP.holidays);
+  renderHolidays();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PDF EXPORTS (opens a print-ready document; choose "Save as PDF")
+═══════════════════════════════════════════════════════════════════════ */
+function openPrintDocument(title, bodyHtml) {
+  const win = window.open('', '_blank');
+  if (!win) { alert('Please allow pop-ups to download the PDF report.'); return; }
+  win.document.write(`<!doctype html><html><head><title>${title}</title><style>
+    body{font:12px Arial,sans-serif;color:#111;margin:24px}h1{font-size:20px}h2{font-size:15px;margin-top:24px}
+    p{color:#444}table{border-collapse:collapse;width:100%;margin:12px 0 22px;font-size:10px}
+    th,td{border:1px solid #bbb;padding:5px;text-align:left}th{background:#eee}
+    @media print{body{margin:10mm}button{display:none}}
+  </style></head><body><h1>${title}</h1><p>Generated ${new Date().toLocaleString()}</p>${bodyHtml}
+  <script>window.onload=()=>setTimeout(()=>window.print(),300);<\/script></body></html>`);
+  win.document.close();
+}
+function downloadCurrentReportPDF() {
+  const output = document.getElementById('report-output');
+  if (output.hidden) { alert('Generate an employee report first.'); return; }
+  openPrintDocument('Attendance — Employee Report', output.innerHTML);
+}
+function downloadAllReportsPDF() {
+  const empIds = Object.keys(APP.employees);
+  if (!empIds.length) { alert('Import employee attendance data first.'); return; }
+  const cycle = getCycleForSelect();
+  const dates = getDatesInRange(cycle.start, cycle.end);
+  let html = `<p>Payroll period: ${fmtDate(cycle.start)} to ${fmtDate(cycle.end)}. Overtime is excluded.</p>`;
+  for (const empId of empIds) {
+    const emp = APP.employees[empId] || {name: empId, dept: ''};
+    const rows = dates.map(date => {
+      const key = toYMD(date);
+      const rec = (APP.processed[empId] || {})[key];
+      const raw = (APP.rawData[empId] || {})[key] || {};
+      const status = rec ? (rec.display || rec.status) : (raw.status || (raw.in || raw.out ? 'Present' : (isWeeklyOff(date) ? 'Weekly Off' : 'Absent')));
+      return `<tr><td>${fmtDate(date)}</td><td>${raw.in || rec?.inTime || '—'}</td><td>${raw.out || rec?.outTime || '—'}</td><td>${status}</td><td>${rec ? Number(rec.deduction || 0).toFixed(2) : '—'}</td><td>${rec?.remark || ''}</td></tr>`;
+    }).join('');
+    const total = dates.reduce((sum,date)=>sum+Number(((APP.processed[empId]||{})[toYMD(date)]||{}).deduction||0),0);
+    html += `<h2>${emp.name} (${empId}) — ${emp.dept || ''}</h2><p>Total deduction: ${total.toFixed(2)} day(s)</p><table><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Status</th><th>Deduction (days)</th><th>Remark</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  openPrintDocument('Attendance — All Users Report', html);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════════════════════════════════════ */
+function loadSettingsUI() {
+  const s = APP.settings;
+  document.getElementById('s-cycle-day').value = s.cycleStartDay;
+  document.getElementById('s-in-time').value = s.officeIn;
+  document.getElementById('s-grace').value = s.grace;
+  document.getElementById('s-late-end').value = s.lateEnd;
+  document.getElementById('s-out-time').value = s.officeOut;
+  document.getElementById('s-target').value = s.targetMins;
+  document.getElementById('s-free-late').value = s.freeLate;
+  updateCyclePreview();
+}
+
+function updateCyclePreview() {
+  const day = parseInt(document.getElementById('s-cycle-day').value, 10) || 25;
+  const prev = APP.settings.cycleStartDay;
+  APP.settings.cycleStartDay = day;
+  const c = getCycleRange(new Date());
+  APP.settings.cycleStartDay = prev;
+  document.getElementById('s-cycle-preview').textContent = `Cycle: ${fmtDate(c.start)} → ${fmtDate(c.end)}`;
+}
+
+function saveSettings() {
+  APP.settings = {
+    cycleStartDay: parseInt(document.getElementById('s-cycle-day').value, 10) || 25,
+    officeIn: document.getElementById('s-in-time').value || '10:00',
+    grace: parseInt(document.getElementById('s-grace').value, 10) || 5,
+    lateEnd: document.getElementById('s-late-end').value || '10:20',
+    officeOut: document.getElementById('s-out-time').value || '18:30',
+    targetMins: parseInt(document.getElementById('s-target').value, 10) || 510,
+    freeLate: parseInt(document.getElementById('s-free-late').value, 10) || 4
+  };
+  Store.set('settings', APP.settings);
+  const saved = document.getElementById('settings-saved');
+  saved.hidden = false;
+  setTimeout(() => { saved.hidden = true; }, 3000);
+  updateDashboard();
+  updateCyclePreview();
+}
+
+function exportJSON() {
+  const payload = { employees: APP.employees, rawData: APP.rawData, processed: APP.processed, holidays: APP.holidays, settings: APP.settings, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  // Can't use download attribute in artifact, show data instead
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'attendance_export.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function clearAllData() {
+  if (!confirm('Clear ALL imported data? This cannot be undone.')) return;
+  APP.employees = {}; APP.rawData = {}; APP.processed = {};
+  Store.remove('employees'); Store.remove('rawData'); Store.remove('processed');
+  updateDashboard();
+  document.getElementById('data-info').textContent = 'All data cleared.';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   THEME TOGGLE
+═══════════════════════════════════════════════════════════════════════ */
+(function initTheme() {
+  const saved = (() => { try { return localStorage.getItem('essl_theme'); } catch { return null; } })();
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('essl_theme', next); } catch {}
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FILE UPLOAD EVENTS
+═══════════════════════════════════════════════════════════════════════ */
+const uploadArea = document.getElementById('upload-area');
+const fileInput = document.getElementById('file-input');
+
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault(); uploadArea.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NAV CLICK EVENTS
+═══════════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.nav-tab').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SETTINGS LIVE PREVIEW
+═══════════════════════════════════════════════════════════════════════ */
+document.getElementById('s-cycle-day').addEventListener('input', updateCyclePreview);
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MODAL BACKDROP CLOSE
+═══════════════════════════════════════════════════════════════════════ */
+document.getElementById('holiday-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('holiday-modal')) closeHolidayModal();
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════════════ */
+(function init() {
+  loadSettingsUI();
+  renderHolidays();
+  updateDashboard();
+  populateCycleSelect();
+
+  // Data info
+  const empCount = Object.keys(APP.employees).length;
+  if (empCount > 0) {
+    document.getElementById('data-info').textContent = `${empCount} employees loaded in browser storage.`;
+  }
+
+  // Seed some sample holidays for India if none exist
+  if (APP.holidays.length === 0) {
+    const year = new Date().getFullYear();
+    APP.holidays = [
+      { date: `${year}-01-26`, name: 'Republic Day' },
+      { date: `${year}-08-15`, name: 'Independence Day' },
+      { date: `${year}-10-02`, name: 'Gandhi Jayanti' },
+    ];
+    Store.set('holidays', APP.holidays);
+    renderHolidays();
+  }
+})();
+</script>
