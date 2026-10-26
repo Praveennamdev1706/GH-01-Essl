@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Attendance Manager</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -547,6 +552,9 @@ select.form-control { cursor: pointer; }
   .deduction-value { font-size: 36px; }
 }
 </style>
+</head>
+<body>
+
 
 <!-- ══════════════════════════════════════════════════════════════════════
      NAVIGATION
@@ -737,8 +745,16 @@ select.form-control { cursor: pointer; }
       <div class="card-title">Processing Options</div>
       <div class="form-row">
         <div class="form-group">
-          <label>Payroll Cycle</label>
+          <label>Payroll Cycle Preset</label>
           <select class="form-control" id="proc-cycle" style="min-width:220px"></select>
+        </div>
+        <div class="form-group">
+          <label for="proc-start-date">Start Date</label>
+          <input type="date" class="form-control" id="proc-start-date" style="min-width:160px">
+        </div>
+        <div class="form-group">
+          <label for="proc-end-date">End Date</label>
+          <input type="date" class="form-control" id="proc-end-date" style="min-width:160px">
         </div>
       </div>
       <div class="section-title mt-8">Apply Rules</div>
@@ -956,9 +972,13 @@ select.form-control { cursor: pointer; }
         <div class="s-title">Payroll Cycle</div>
         <div class="form-group" style="margin-bottom:14px">
           <label>Cycle Start Day (1 – 28)</label>
-          <input type="number" class="form-control" id="s-cycle-day" min="1" max="28" value="25" style="min-width:100px; max-width:120px">
+          <input type="number" class="form-control" id="s-cycle-day" min="1" max="28" value="26" style="min-width:100px; max-width:120px">
         </div>
-        <div class="text-muted" style="font-size:12px;margin-bottom:12px" id="s-cycle-preview">Cycle: 25 Sep → 24 Oct</div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Cycle End Day / Next Cycle Boundary (1 – 28)</label>
+          <input type="number" class="form-control" id="s-cycle-end-day" min="1" max="28" value="26" style="min-width:100px; max-width:120px">
+        </div>
+        <div class="text-muted" style="font-size:12px;margin-bottom:12px" id="s-cycle-preview">Cycle: calculated from selected payroll cycle</div>
         <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Settings</button>
         <div id="settings-saved" class="alert alert-success mt-8" hidden>✅ Settings saved successfully.</div>
       </div>
@@ -1055,7 +1075,8 @@ const Store = {
 ═══════════════════════════════════════════════════════════════════════ */
 const APP = {
   settings: Store.get('settings', {
-    cycleStartDay: 25,
+    cycleStartDay: 26,
+    cycleEndDay: 26,
     officeIn: '10:05',
     grace: 0,
     lateEnd: '10:20',
@@ -1070,6 +1091,11 @@ const APP = {
   importBuffer: null,                        // temp before confirm
   cycleInfo: null
 };
+
+// Upgrade saved settings from earlier versions without overwriting user choices.
+if (!Number.isFinite(Number(APP.settings.cycleStartDay))) APP.settings.cycleStartDay = 26;
+if (!Number.isFinite(Number(APP.settings.cycleEndDay))) APP.settings.cycleEndDay = APP.settings.cycleStartDay || 26;
+Store.set('settings', APP.settings);
 
 // One-time migration for existing browser data created with the old 10:00 + 5-minute grace rule.
 if (APP.settings.officeIn === '10:00' && Number(APP.settings.grace) === 5) {
@@ -1141,18 +1167,22 @@ function fmtDuration(mins) {
   return `${h}h ${String(m).padStart(2,'0')}m`;
 }
 function getCycleRange(refDate) {
-  const sd = APP.settings.cycleStartDay;
+  // End day is the next-cycle boundary (exclusive). 26 → 26 means the
+  // inclusive payroll period is the 26th through the 25th of the next month.
+  const sd = Math.min(28, Math.max(1, Number(APP.settings.cycleStartDay) || 26));
+  const ed = Math.min(28, Math.max(1, Number(APP.settings.cycleEndDay) || sd));
   const d = refDate || new Date();
   const yr = d.getFullYear ? d.getFullYear() : parseInt(String(d).substring(0,4));
   const mo = d.getMonth ? d.getMonth() : parseInt(String(d).substring(5,7)) - 1;
   const dom = d.getDate ? d.getDate() : parseInt(String(d).substring(8,10));
-  let startY = yr, startM = mo;
-  if (dom < sd) { startM--; if (startM < 0) { startM = 11; startY--; } }
-  const start = utcDate(startY, startM, sd);
-  const endDate = new Date(start);
-  endDate.setUTCMonth(endDate.getUTCMonth() + 1);
-  endDate.setUTCDate(endDate.getUTCDate() - 1);
-  return { start, end: endDate };
+  let start = utcDate(yr, mo, sd);
+  if (dom < sd || (ed > sd && dom >= ed)) start = utcDate(yr, mo + (dom < sd ? -1 : 1), sd);
+  let endBoundary;
+  if (ed > sd) endBoundary = utcDate(start.getUTCFullYear(), start.getUTCMonth(), ed);
+  else endBoundary = utcDate(start.getUTCFullYear(), start.getUTCMonth() + 1, ed);
+  const end = new Date(endBoundary);
+  end.setUTCDate(end.getUTCDate() - 1);
+  return { start, end };
 }
 function getDatesInRange(start, end) {
   const dates = [];
@@ -1187,7 +1217,8 @@ function parseESSLExcel(buffer) {
         Object.assign(results.employees, lp.employees);
         Object.assign(results.rawData, lp.rawData);
         results.format = 'long'; results.meta = lp.meta;
-        break;
+        // Continue checking remaining worksheets and merge their records too.
+        continue;
       }
       continue;
     }
@@ -1196,8 +1227,13 @@ function parseESSLExcel(buffer) {
     // Day cells look like "1 Th", "10 St", "31 M"
     const colDayMap = {};
     flat[daysRowIdx].forEach((cell, c) => {
-      const m = cell.match(/^(\d{1,2})\s+([A-Za-z]+)/);
-      if (m) colDayMap[c] = { day: parseInt(m[1], 10), abbr: m[2] };
+      const m = cell.match(/^(\d{1,2})(?:\s+([A-Za-z]+))?/);
+      // Some eSSL exports omit weekday text for later date columns (e.g. just '22').
+      // Accept a day number by itself so dates after the 21st are not silently skipped.
+      if (m) {
+        const day = parseInt(m[1], 10);
+        if (day >= 1 && day <= 31) colDayMap[c] = { day, abbr: m[2] || '' };
+      }
     });
     if (Object.keys(colDayMap).length === 0) continue;
 
@@ -1213,7 +1249,22 @@ function parseESSLExcel(buffer) {
         if (mo !== -1) { month = mo; year = parseInt(m[2], 10); break; }
       }
     }
+    // Assign actual calendar dates in column order. eSSL reports can span
+    // two months (e.g. Sep 26 through Oct 26), so day numbers must roll over
+    // when the header changes from 30/31 back to 1.
+    let mapYear = year, mapMonth = month, previousDay = null;
+    for (const colStr of Object.keys(colDayMap).sort((a, b) => Number(a) - Number(b))) {
+      const info = colDayMap[colStr];
+      if (previousDay !== null && info.day < previousDay) {
+        mapMonth++;
+        if (mapMonth > 11) { mapMonth = 0; mapYear++; }
+      }
+      info.date = utcDate(mapYear, mapMonth, info.day);
+      previousDay = info.day;
+    }
+
     results.meta = { year, month };
+    results.format = 'wide';
 
     // ── 4. Parse employee blocks ────────────────────────────────────────
     // Each block:
@@ -1263,13 +1314,14 @@ function parseESSLExcel(buffer) {
         const otMins  = parseHHMM(otRow[c] || '');
 
         try {
-          const d = utcDate(year, month, info.day);
+          const d = info.date || utcDate(year, month, info.day);
           results.rawData[empId][toYMD(d)] = { in: inT, out: outT, status, ot: otMins };
         } catch { /* invalid date — skip */ }
       }
     }
 
-    if (Object.keys(results.employees).length > 0) break;
+    // Continue through every worksheet. Some eSSL workbooks split attendance
+    // across multiple sheets; stopping after the first sheet can omit later dates.
   }
 
   return results;
@@ -1374,6 +1426,9 @@ function processAttendance() {
   const freeLate = s.freeLate;
 
   const cycle = getCycleForSelect();
+  if (cycle.end < cycle.start) { alert('End Date must be on or after Start Date.'); return; }
+  const cycleLength = Math.round((cycle.end - cycle.start) / 86400000) + 1;
+  if (cycleLength > 370) { alert('Please select a payroll period of 370 days or less.'); return; }
   const cycDates = getDatesInRange(cycle.start, cycle.end);
 
   const processed = {};
@@ -1445,7 +1500,7 @@ function processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, targetMins
   const actualIn = timeToMins(raw.in);
   const actualOut = timeToMins(raw.out);
   let deduction = 0;
-  let isLate = false, isEarly = false, lateMin = 0, earlyMin = 0;
+  let isLate = false, isEarly = false, lateMin = 0, earlyMin = 0, chargeableLate = false;
   let remark = '';
   let shortLeave = false, halfDay = false;
 
@@ -1468,11 +1523,13 @@ function processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, targetMins
     if (actualIn > timeToMins('12:00')) {
       // Any arrival after noon (including after 2:15 PM) is a half day.
       deduction += 0.5;
+      chargeableLate = true;
       halfDay = true;
       remark += 'Arrival after 12:00 PM (–0.50 day); ';
     } else if (actualIn > lateEnd) {
       // 10:20 AM to 12:00 PM: direct deduction, no free-late allowance.
       deduction += 0.25;
+      chargeableLate = true;
       remark += `Late after 10:20 ${lateMin}min (–0.25); `;
     } else {
       // 10:06 AM to 10:20 AM: four free occurrences per payroll cycle.
@@ -1480,6 +1537,7 @@ function processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, targetMins
       const currentCount = lateCount[empId] || 0;
       if (currentCount >= freeLate) {
         deduction += 0.25;
+        chargeableLate = true;
         remark += `Late ${lateMin}min (–0.25); `;
       } else {
         remark += `Late ${lateMin}min (free ${currentCount + 1}/${freeLate}); `;
@@ -1510,7 +1568,7 @@ function processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, targetMins
 
   return {
     status, display, deduction,
-    isLate, isEarly, lateMin, earlyMin,
+    isLate, isEarly, lateMin, earlyMin, chargeableLate,
     otMins, durationMins,
     remark, shortLeave, halfDay, countsTowardFreeLate,
     inTime: raw.in || null, outTime: raw.out || null
@@ -1598,19 +1656,50 @@ function populateEmpDropdown() {
 
 function populateCycleSelect() {
   const sel = document.getElementById('proc-cycle');
+  if (!sel) return;
   const cycle = getCycleRange(new Date());
-  sel.innerHTML = `<option value="${toYMD(cycle.start)}|${toYMD(cycle.end)}">${fmtDate(cycle.start)} – ${fmtDate(cycle.end)}</option>`;
-  // Add previous cycle
-  const prev = new Date(cycle.start); prev.setUTCDate(prev.getUTCDate() - 1);
-  const prevCycle = getCycleRange(prev);
-  sel.innerHTML += `<option value="${toYMD(prevCycle.start)}|${toYMD(prevCycle.end)}">${fmtDate(prevCycle.start)} – ${fmtDate(prevCycle.end)}</option>`;
+  const previousRef = new Date(cycle.start);
+  previousRef.setUTCDate(previousRef.getUTCDate() - 1);
+  const prevCycle = getCycleRange(previousRef);
+  const currentValue = `${toYMD(cycle.start)}|${toYMD(cycle.end)}`;
+  sel.innerHTML = `<option value="${currentValue}">${fmtDate(cycle.start)} – ${fmtDate(cycle.end)} (Current)</option>`;
+  sel.innerHTML += `<option value="${toYMD(prevCycle.start)}|${toYMD(prevCycle.end)}">${fmtDate(prevCycle.start)} – ${fmtDate(prevCycle.end)} (Previous)</option>`;
+
+  const startInput = document.getElementById('proc-start-date');
+  const endInput = document.getElementById('proc-end-date');
+  if (startInput && endInput) {
+    // Preserve a user's custom date range when reopening the tab; otherwise use current cycle.
+    if (!startInput.value || !endInput.value) {
+      startInput.value = toYMD(cycle.start);
+      endInput.value = toYMD(cycle.end);
+    }
+    const customValue = `${startInput.value}|${endInput.value}`;
+    const preset = Array.from(sel.options).find(o => o.value === customValue);
+    sel.value = preset ? customValue : currentValue;
+  }
+}
+
+function applyCyclePreset() {
+  const sel = document.getElementById('proc-cycle');
+  if (!sel || !sel.value) return;
+  const [start, end] = sel.value.split('|');
+  document.getElementById('proc-start-date').value = start;
+  document.getElementById('proc-end-date').value = end;
 }
 
 function getCycleForSelect() {
+  const startValue = document.getElementById('proc-start-date')?.value;
+  const endValue = document.getElementById('proc-end-date')?.value;
+  if (startValue && endValue) {
+    const start = parseYMD(startValue), end = parseYMD(endValue);
+    if (end >= start) return { start, end };
+  }
   const sel = document.getElementById('proc-cycle');
-  if (!sel || !sel.value) return getCycleRange(new Date());
-  const [s, e] = sel.value.split('|');
-  return { start: parseYMD(s), end: parseYMD(e) };
+  if (sel && sel.value) {
+    const [s, e] = sel.value.split('|');
+    return { start: parseYMD(s), end: parseYMD(e) };
+  }
+  return getCycleRange(new Date());
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1656,17 +1745,18 @@ function generateReport() {
   for (const date of dates) {
     const dateStr = toYMD(date);
     const raw = rawEmp[dateStr] || {};
-    // Use processed data if available, else process on-the-fly
-    const rec = procEmp[dateStr] || processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, s.targetMins, s.freeLate, lateCount, empId);
+    // Recompute chronologically for this report range so the four-free-late
+    // allowance is applied correctly and old saved processing results cannot skew the count.
+    const rec = processDay(dateStr, raw, inMins, graceEnd, lateEnd, outMins, s.targetMins, s.freeLate, lateCount, empId);
 
-    if (rec.isLate) lateCount[empId]++;
+    if (rec.countsTowardFreeLate) lateCount[empId]++;
 
     // Status counts
     if (rec.status === 'WO') totals.wo++;
     else if (rec.status === 'H') totals.holiday++;
     else if (rec.status === 'A') totals.absent++;
     else { totals.present++; }
-    if (rec.isLate) totals.late++;
+    if (rec.chargeableLate) totals.late++;
     if (rec.isEarly) totals.early++;
     if (rec.shortLeave) totals.shortLeave++;
     if (rec.halfDay) totals.halfDay++;
@@ -1773,6 +1863,13 @@ function handleFile(file) {
 
       APP.importBuffer = parsed;
 
+      // Show the actual date coverage detected by the parser so an incomplete
+      // source export can be distinguished from an application parsing problem.
+      const importedDates = Object.values(parsed.rawData).flatMap(days => Object.keys(days));
+      const uniqueDates = [...new Set(importedDates)].sort();
+      const firstImportedDate = uniqueDates[0] || '';
+      const lastImportedDate = uniqueDates[uniqueDates.length - 1] || '';
+
       // Populate preview table
       const tbody = document.getElementById('preview-tbody');
       tbody.innerHTML = '';
@@ -1803,7 +1900,7 @@ function handleFile(file) {
       document.getElementById('preview-count').textContent = empCount;
       document.getElementById('import-format-text').textContent = `Detected format: ${parsed.format === 'wide' ? 'Wide (dates as columns)' : 'Long (one row per day)'}. Month: ${parsed.meta.year ? MONTH_NAMES[parsed.meta.month] + ' ' + parsed.meta.year : 'auto-detected'}.`;
       document.getElementById('import-preview').hidden = false;
-      showAlert(`Found ${empCount} employees. Review the preview and click "Confirm Import".`, 'success');
+      showAlert(`Found ${empCount} employees; detected attendance dates ${firstImportedDate || '—'} to ${lastImportedDate || '—'} (${uniqueDates.length} distinct dates). Review the preview and click "Confirm Import". If the last date is 21 Oct, check whether the source Excel contains columns/data after day 21.`, 'success');
     } catch (err) {
       console.error(err);
       showAlert('Error parsing file: ' + err.message, 'error');
@@ -1941,7 +2038,8 @@ function downloadAllReportsPDF() {
 ═══════════════════════════════════════════════════════════════════════ */
 function loadSettingsUI() {
   const s = APP.settings;
-  document.getElementById('s-cycle-day').value = s.cycleStartDay;
+  document.getElementById('s-cycle-day').value = s.cycleStartDay || 26;
+  document.getElementById('s-cycle-end-day').value = s.cycleEndDay || s.cycleStartDay || 26;
   document.getElementById('s-in-time').value = s.officeIn;
   document.getElementById('s-grace').value = s.grace;
   document.getElementById('s-late-end').value = s.lateEnd;
@@ -1952,17 +2050,19 @@ function loadSettingsUI() {
 }
 
 function updateCyclePreview() {
-  const day = parseInt(document.getElementById('s-cycle-day').value, 10) || 25;
-  const prev = APP.settings.cycleStartDay;
-  APP.settings.cycleStartDay = day;
+  const day = Math.min(28, Math.max(1, parseInt(document.getElementById('s-cycle-day').value, 10) || 26));
+  const endDay = Math.min(28, Math.max(1, parseInt(document.getElementById('s-cycle-end-day').value, 10) || day));
+  const prevStart = APP.settings.cycleStartDay, prevEnd = APP.settings.cycleEndDay;
+  APP.settings.cycleStartDay = day; APP.settings.cycleEndDay = endDay;
   const c = getCycleRange(new Date());
-  APP.settings.cycleStartDay = prev;
-  document.getElementById('s-cycle-preview').textContent = `Cycle: ${fmtDate(c.start)} → ${fmtDate(c.end)}`;
+  APP.settings.cycleStartDay = prevStart; APP.settings.cycleEndDay = prevEnd;
+  document.getElementById('s-cycle-preview').textContent = `Cycle: ${fmtDate(c.start)} → ${fmtDate(c.end)} (end day is the next-cycle boundary)`;
 }
 
 function saveSettings() {
   APP.settings = {
-    cycleStartDay: parseInt(document.getElementById('s-cycle-day').value, 10) || 25,
+    cycleStartDay: Math.min(28, Math.max(1, parseInt(document.getElementById('s-cycle-day').value, 10) || 26)),
+    cycleEndDay: Math.min(28, Math.max(1, parseInt(document.getElementById('s-cycle-end-day').value, 10) || 26)),
     officeIn: document.getElementById('s-in-time').value || '10:00',
     grace: parseInt(document.getElementById('s-grace').value, 10) || 5,
     lateEnd: document.getElementById('s-late-end').value || '10:20',
@@ -1971,6 +2071,17 @@ function saveSettings() {
     freeLate: parseInt(document.getElementById('s-free-late').value, 10) || 4
   };
   Store.set('settings', APP.settings);
+
+  // Refresh every UI that depends on the payroll cycle immediately after saving.
+  // Otherwise Processing Options and the default report dates can keep showing
+  // the old cycle until the page is reloaded.
+  populateCycleSelect();
+  const cycle = getCycleRange(new Date());
+  const reportFrom = document.getElementById('report-from');
+  const reportTo = document.getElementById('report-to');
+  if (reportFrom) reportFrom.value = toYMD(cycle.start);
+  if (reportTo) reportTo.value = toYMD(cycle.end);
+
   const saved = document.getElementById('settings-saved');
   saved.hidden = false;
   setTimeout(() => { saved.hidden = true; }, 3000);
@@ -2037,6 +2148,7 @@ document.querySelectorAll('.nav-tab').forEach(btn => {
    SETTINGS LIVE PREVIEW
 ═══════════════════════════════════════════════════════════════════════ */
 document.getElementById('s-cycle-day').addEventListener('input', updateCyclePreview);
+document.getElementById('s-cycle-end-day').addEventListener('input', updateCyclePreview);
 
 /* ═══════════════════════════════════════════════════════════════════════
    MODAL BACKDROP CLOSE
@@ -2048,6 +2160,15 @@ document.getElementById('holiday-modal').addEventListener('click', e => {
 /* ═══════════════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════════════ */
+document.getElementById('proc-cycle').addEventListener('change', applyCyclePreset);
+['proc-start-date', 'proc-end-date'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    const sel = document.getElementById('proc-cycle');
+    const value = `${document.getElementById('proc-start-date').value}|${document.getElementById('proc-end-date').value}`;
+    sel.value = Array.from(sel.options).some(o => o.value === value) ? value : '';
+  });
+});
+
 (function init() {
   loadSettingsUI();
   renderHolidays();
@@ -2073,3 +2194,5 @@ document.getElementById('holiday-modal').addEventListener('click', e => {
   }
 })();
 </script>
+</body>
+</html>
